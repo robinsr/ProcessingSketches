@@ -23,8 +23,11 @@ public class MySketch extends PApplet{
         fullScreen();
         //noLoop();
         //colorMode(HSB, 255);
-        pixelDensity(2);
-
+        try {
+            pixelDensity(2);
+        } catch (RuntimeException e) {
+            pixelDensity(1);
+        }
     }
 
     public void setup(){
