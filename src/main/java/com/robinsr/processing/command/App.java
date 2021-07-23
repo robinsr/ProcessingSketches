@@ -1,12 +1,21 @@
 package com.robinsr.processing.command;
 
 import com.robinsr.processing.sketches.BaseSketch;
+import de.codeshelf.consoleui.prompt.ConsolePrompt;
+import de.codeshelf.consoleui.prompt.ListResult;
+import de.codeshelf.consoleui.prompt.PromtResultItemIF;
+import de.codeshelf.consoleui.prompt.builder.ListPromptBuilder;
+import de.codeshelf.consoleui.prompt.builder.PromptBuilder;
+import jline.TerminalFactory;
+import org.fusesource.jansi.AnsiConsole;
 import org.reflections.Reflections;
 
-import java.util.List;
-import java.util.Scanner;
-import java.util.Set;
+import java.io.IOException;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static org.fusesource.jansi.Ansi.ansi;
 
 public class App {
 
@@ -15,32 +24,47 @@ public class App {
     }
 
     public App(String[] args) {
-        String msg = String.join("\n",
-                "Welcome", "Select a Sketch", ""
-        );
-        System.out.println(msg);
+        AnsiConsole.systemInstall();
+        System.out.println(ansi().render("Processing Sketches"));
 
-        List<String> sketches = getSketches();
-
-        List<String> options = sketches.stream()
-                .map(sketch -> sketches.indexOf(sketch) + ": " + sketch)
-                .collect(Collectors.toList());
-
-        System.out.println(String.join("\n", options));
-
-
-        Scanner scanner = new Scanner(System.in);
-        int selection = scanner.nextInt();
+        Map<String, String> sketches = getSketches();
 
         try {
-            String className = sketches.get(selection);
+            ConsolePrompt prompt = new ConsolePrompt();
+            PromptBuilder promptBuilder = prompt.getPromptBuilder();
 
-            Class<?> sketchClass = Class.forName(className);
+            ListPromptBuilder builder = promptBuilder.createListPrompt()
+                    .name("sketchSelection")
+                    .message("Select a sketch to run:");
+
+            sketches.forEach((key, value) -> builder.newItem(key).text(value).add());
+
+            builder.addPrompt();
+
+            HashMap<String, ? extends PromtResultItemIF> result = prompt.prompt(promptBuilder.build());
+
+            String selectedSketch = ((ListResult) result.get("sketchSelection")).getSelectedId();
+
+            runSketch(selectedSketch);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                TerminalFactory.get().restore();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void runSketch(String sketchClassName) {
+        try {
+            Class<?> sketchClass = Class.forName(sketchClassName);
 
             if (BaseSketch.class.isAssignableFrom(sketchClass)) {
                 BaseSketch sketch = (BaseSketch) sketchClass.newInstance();
-                System.out.printf("Running sketch %s%n", className);
-                sketch.runSketch(new String[] { className });
+                System.out.printf("Running sketch %s%n", sketchClassName);
+                sketch.runSketch(new String[] { sketchClassName });
             }
 
             System.out.println("All done! Thanks");
@@ -59,14 +83,21 @@ public class App {
      * Gets the class names for all project sketches
      * @return list of sketch class names
      */
-    private static List<String> getSketches() {
+    private Map<String, String> getSketches() {
         Reflections ref = new Reflections("com.robinsr.processing.sketches");
 
         Set<Class<? extends BaseSketch>> opts = ref.getSubTypesOf(BaseSketch.class);
 
-        return opts.stream()
-                .map(Class::getName)
-                .collect(Collectors.toList());
-    }
+        Function<Class<? extends BaseSketch>, String> nameGetter = clazz -> {
+            try {
+                return clazz.newInstance().getSketchName();
+            } catch (InstantiationException | IllegalAccessException e) {
+                e.printStackTrace();
+                return null;
+            }
+        };
 
+        return opts.stream()
+                .collect(Collectors.toMap(Class::getName, nameGetter));
+    }
 }

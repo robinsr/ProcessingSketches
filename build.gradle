@@ -14,6 +14,7 @@ repositories {
 dependencies {
     implementation 'org.processing:core:3.3.7'
     implementation 'org.reflections:reflections:0.9.12'
+    implementation 'de.codeshelf.consoleui:consoleui:0.0.13'
 }
 
 group = 'com.github.robinsr'

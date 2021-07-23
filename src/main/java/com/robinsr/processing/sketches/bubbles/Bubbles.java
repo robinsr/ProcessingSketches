@@ -21,6 +21,10 @@ public class Bubbles extends BaseSketch {
     private boolean paused = false;
     private int bubbleNo = 0;
 
+    public String getSketchName() {
+        return "Bubbles";
+    }
+
     public void setup(){
         frameRate(30);
         noStroke();
@@ -68,11 +72,5 @@ public class Bubbles extends BaseSketch {
 
     public void mouseClicked() {
         paused = !paused;
-    }
-
-
-    @Override
-    public String getName() {
-        return "Bubbles";
     }
 }
